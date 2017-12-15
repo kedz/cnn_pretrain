@@ -3,11 +3,16 @@ import os
 import torch
 import ntp
 from ntp.datasets import imdb
+from .util import get_data_path as get_top_level_data_path
 
 def get_data_path():
-    return os.getenv(
-        "CNN_PRETRAIN_DATA", 
-        os.path.expanduser(os.path.join("~", "cnn_pretrain_data")))
+    return os.path.join(get_top_level_data_path(), "imdb")
+
+def get_datasets_path():
+    return os.path.join(get_data_path(), "datasets")
+
+def get_models_path():
+    return os.path.join(get_data_path(), "models")
 
 def get_sample(size=25):
     train_tsv_path = imdb.get_imdb_data_path(split="train")
@@ -51,20 +56,20 @@ def get_dataset(part='train'):
         raise Exception(
             "part must be one of 'train', 'valid', 'test', 'unlabeled'.")
     path = os.path.join(
-        get_data_path(), "imdb", "datasets", "{}.bin".format(part))
+        get_datasets_path(), "{}.bin".format(part))
     if not os.path.exists(path):
         create()
 
     return torch.load(path)
 
 def get_labeled_data_reader():
-    path = os.path.join(get_data_path(), "imdb", "datasets", "imdb_reader.bin")
+    path = os.path.join(get_datasets_path(), "imdb_reader.bin")
     if not os.path.exists(path):
         create()
     return torch.load(path)
 
 def get_vocab():
-    path = os.path.join(get_data_path(), "imdb", "datasets", "imdb_vocab.bin")
+    path = os.path.join(get_datasets_path(), "imdb_vocab.bin")
     if not os.path.exists(path):
         create()
     return torch.load(path)
@@ -72,17 +77,15 @@ def get_vocab():
 def create(at_least=10, start_token=None, stop_token=None, replace_digit="#",
            lower=True, train_per=.85):
 
-    imdb_data_path = os.path.join(get_data_path(), "imdb")
-    dataset_path = os.path.join(imdb_data_path, "datasets")
-    if not os.path.exists(dataset_path):
-        os.makedirs(dataset_path)
+    if not os.path.exists(get_datasets_path()):
+        os.makedirs(get_datasets_path())
 
-    reader_path = os.path.join(dataset_path, "imdb_reader.bin")
-    vocab_path = os.path.join(dataset_path, "imdb_vocab.bin")
-    train_dataset_path = os.path.join(dataset_path, "train.bin")
-    valid_dataset_path = os.path.join(dataset_path, "valid.bin")
-    test_dataset_path = os.path.join(dataset_path, "test.bin")
-    unlabeled_dataset_path = os.path.join(dataset_path, "unlabeled.bin")
+    reader_path = os.path.join(get_datasets_path(), "imdb_reader.bin")
+    vocab_path = os.path.join(get_datasets_path(), "imdb_vocab.bin")
+    train_dataset_path = os.path.join(get_datasets_path(), "train.bin")
+    valid_dataset_path = os.path.join(get_datasets_path(), "valid.bin")
+    test_dataset_path = os.path.join(get_datasets_path(), "test.bin")
+    unlabeled_dataset_path = os.path.join(get_datasets_path(), "unlabeled.bin")
 
     train_tsv_path = imdb.get_imdb_data_path(split="train")
     test_tsv_path = imdb.get_imdb_data_path(split="test")
