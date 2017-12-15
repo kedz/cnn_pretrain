@@ -5,6 +5,7 @@ import random
 import torch
 import ntp
 import cnn_pretrain
+from datetime import datetime
 
 
 def main():
@@ -45,9 +46,15 @@ def main():
         "--hidden-layer-sizes", default=[100], type=int, nargs="+")  
 
     parser.add_argument(
-        "--save-model", default="data/models/cnn.bin", type=str)
+        "--save-model", default=None, type=str)
 
     args = parser.parse_args()
+
+    if args.save_model is None:
+        ts = int((datetime.now() - datetime(1970,1,1)).total_seconds())
+        args.save_model = os.path.join(
+            cnn_pretrain.datasets.imdb.get_models_path(),
+            "cnn.{}.bin".format(ts))
 
     random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -94,6 +101,9 @@ def main():
                                    validation_data=valid_dataset,
                                    max_epochs=args.epochs,
                                    save_model=args.save_model)
+    
+    print("Best model saved to {}".format(args.save_model))
+
 
 if __name__ == "__main__":
     main()

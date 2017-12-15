@@ -6,6 +6,7 @@ import torch
 import ntp
 import cnn_pretrain
 import numpy as np
+from datetime import datetime
 
 
 def main():
@@ -17,6 +18,8 @@ def main():
         "--epochs", default=25, type=int, required=False)
     parser.add_argument(
         "--seed", default=83432534, type=int, required=False)
+    parser.add_argument(
+        "--positive-samples", type=int, default=10, required=False)
     parser.add_argument(
         "--noise-samples", type=int, default=10, required=False)
 
@@ -34,8 +37,6 @@ def main():
         "--embedding-dropout", required=False, default=.1, type=float)
     parser.add_argument(
         "--conv-dropout", required=False, default=.25, type=float)
-    parser.add_argument(
-        "--mlp-dropout", required=False, default=.25, type=float)
 
     ### Conv settings ###
     parser.add_argument(
@@ -44,9 +45,15 @@ def main():
         "--num_filters", default=300, type=int, required=False)
 
     parser.add_argument(
-        "--save-model", default="data/models/cnn_nce.bin", type=str)
+        "--save-model", default=None, type=str)
 
     args = parser.parse_args()
+
+    if args.save_model is None:
+        ts = int((datetime.now() - datetime(1970,1,1)).total_seconds())
+        args.save_model = os.path.join(
+            cnn_pretrain.datasets.imdb.get_models_path(),
+            "cnn_nce.{}.bin".format(ts))
 
     random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -65,9 +72,14 @@ def main():
     freqs = freqs.float() ** .75
     vocab = cnn_pretrain.datasets.imdb.get_vocab()
 
-    sampler = cnn_pretrain.dataio.ContextSampler(dataset, freqs,
-        num_negative=args.noise_samples)
+    sampler = cnn_pretrain.dataio.ContextSampler(
+        dataset, 
+        freqs,
+        num_positive=args.positive_samples,
+        num_negative=args.noise_samples,
+        pos_inv_freq=True)
 
+    # TODO valid datset nans for some reason.
     valid_dataset = cnn_pretrain.datasets.imdb.get_dataset(part="valid")
     valid_dataset.batch_size = args.batch_size
     if args.gpu > -1:
@@ -98,7 +110,6 @@ def main():
         model.cuda(args.gpu)
 
     crit = ntp.criterion.BinaryCrossEntropy(mode="logit", mask_value=-1)
-   # crit.add_reporter(ntp.criterion.MultiClassAccuracyReporter())
     opt = ntp.optimizer.Adam(model.parameters(), lr=args.lr)
 
     ntp.trainer.optimize_criterion(crit, model, opt, sampler,
@@ -106,18 +117,7 @@ def main():
                                    validation_data=sampler,
                                    save_model=args.save_model)
 
-#    if args.save_model is not None:
-#        print("Restoring model to best epoch...")
-#        best_model = torch.load(args.save_model)
-#
-#        if args.save_predictor is not None:
-#            pred_dir = os.path.dirname(args.save_predictor)
-#            if pred_dir != "" and not os.path.exists(pred_dir):
-#                os.makedirs(pred_dir)
-#
-#            data = {"model": best_model , "reader": reader}
-#            print("Saving module and file reader...")
-#            torch.save(data, args.save_predictor)
+    print("Best model saved to {}".format(args.save_model))
 
 if __name__ == "__main__":
     main()
