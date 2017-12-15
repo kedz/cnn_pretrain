@@ -40,15 +40,28 @@ class CNNNCE(nn.Module):
 
     def forward(self, inputs):
         batch_size = inputs.samples.size(0)
-        embedded_targets = self.sample_embedding(inputs.samples)
+        num_pos = inputs.samples.size(1)
+        num_neg = inputs.samples.size(2) - 1
+        num_samples = num_pos * num_neg + num_pos  
+
+
+        embedded_targets_flat = self.sample_embedding(inputs.samples.view(-1))
+        embedded_targets = embedded_targets_flat.view(
+            batch_size, num_samples, -1) 
+
         embedded_seq = self.input_embedding(inputs.sequence)
         feature_map = self.cnn.encoder_state_output(embedded_seq)
+        
         score = torch.bmm(
             embedded_targets, feature_map.view(batch_size, -1, 1)).view(
             batch_size, -1)
+        
         noise_term = torch.log(inputs.noise_probs).add_(self.noise_scaling)
         noise_term.masked_fill_(inputs.samples.eq(0), 0)
-        logit = score.sub_(noise_term)
+        noise_term = noise_term.view(batch_size, -1)
+        
+        logit = score.sub_(noise_term).view(inputs.samples.size())
+
         return logit
 
     def nearest_neighbors(self, inputs, k):
