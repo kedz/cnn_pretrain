@@ -109,8 +109,10 @@ class ContextSampler(object):
         freqs = self.frequencies.index_select(
             0, inputs.data.view(-1)).view(inputs.size())
         if inv_freq:
-            mask = inputs.data.eq(0)
-            return (1 / freqs).masked_fill_(mask, 0)
+            inv_freq = (1 / freqs)
+            mask = inv_freq.eq(float("inf"))
+            inv_freq.masked_fill_(mask, 0)
+            return inv_freq
         else:
             return freqs
 

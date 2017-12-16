@@ -15,13 +15,13 @@ def main():
     parser.add_argument(
         "--gpu", default=-1, type=int, required=False)
     parser.add_argument(
-        "--epochs", default=25, type=int, required=False)
+        "--epochs", default=100, type=int, required=False)
     parser.add_argument(
         "--seed", default=83432534, type=int, required=False)
     parser.add_argument(
-        "--positive-samples", type=int, default=10, required=False)
+        "--positive-samples", type=int, default=25, required=False)
     parser.add_argument(
-        "--noise-samples", type=int, default=10, required=False)
+        "--noise-samples", type=int, default=25, required=False)
 
     parser.add_argument(
         "--lr", required=False, default=.0001, type=float)
@@ -40,9 +40,9 @@ def main():
 
     ### Conv settings ###
     parser.add_argument(
-        "--filter_widths", default=[3, 4, 5], type=int, nargs="+")
+        "--filter_widths", default=[1, 2, 3], type=int, nargs="+")
     parser.add_argument(
-        "--num_filters", default=300, type=int, required=False)
+        "--num_filters", default=100, type=int, required=False)
 
     parser.add_argument(
         "--save-model", default=None, type=str)
@@ -79,14 +79,17 @@ def main():
         num_negative=args.noise_samples,
         pos_inv_freq=True)
 
-    # TODO valid datset nans for some reason.
     valid_dataset = cnn_pretrain.datasets.imdb.get_dataset(part="valid")
     valid_dataset.batch_size = args.batch_size
     if args.gpu > -1:
         valid_dataset.gpu = args.gpu
 
     valid_sampler = cnn_pretrain.dataio.ContextSampler(
-        valid_dataset, freqs, num_negative=args.noise_samples)
+        valid_dataset, 
+        freqs, 
+        num_positive=args.positive_samples,
+        num_negative=args.noise_samples,
+        pos_inv_freq=True)
     
     input_embedding = ntp.modules.Embedding(
         vocab.size, args.embedding_size, 
@@ -114,7 +117,7 @@ def main():
 
     ntp.trainer.optimize_criterion(crit, model, opt, sampler,
                                    max_epochs=args.epochs,
-                                   validation_data=sampler,
+                                   validation_data=valid_sampler,
                                    save_model=args.save_model)
 
     print("Best model saved to {}".format(args.save_model))

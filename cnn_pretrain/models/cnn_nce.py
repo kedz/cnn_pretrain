@@ -44,7 +44,6 @@ class CNNNCE(nn.Module):
         num_neg = inputs.samples.size(2) - 1
         num_samples = num_pos * num_neg + num_pos  
 
-
         embedded_targets_flat = self.sample_embedding(inputs.samples.view(-1))
         embedded_targets = embedded_targets_flat.view(
             batch_size, num_samples, -1) 
